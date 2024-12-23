@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
+    <style>
+       @import url('https://fastly.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css');
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: 'galmuri11', sans-serif; /* 기본 폰트 설정 */
+      }
+      canvas {
+        display: block;
+      }
+
+      .introtext {
+    position: fixed; /* 화면에 고정 */
+    top: 50%; /* 화면의 세로 중앙 */
+    left: 50%; /* 화면의 가로 중앙 */
+    transform: translate(-50%, -50%); /* 정확히 중앙 정렬 */
+    background-color: #c9e8ff; /* 노란색 배경 */
+    border: 1px solid #000;
+    color: #000; /* 검은색 텍스트 */
+    font-family: 'galmuri11', sans-serif; /* 텍스트 박스 폰트 */
+    padding: 3vw 2vw; /* 화면 크기에 비례한 내부 여백 */
+    border-radius: 1vw; /* 화면 크기에 비례한 둥근 모서리 */
+    font-size: 1.5vw; /* 화면 너비에 비례한 텍스트 크기 */
+    line-height: 1.8; /* 줄 간격 조정 */
+    text-align: center; /* 텍스트 중앙 정렬 */
+    z-index: 1000; /* 콘텐츠 위로 뜨게 */
+    display: none; /* 처음에는 숨김 */
+    max-width: 60; /* 너무 커지지 않도록 최대 너비 제한 */
+    max-height: 40%; /* 최대 높이 제한 */
+   
+}
+
+.introtext button {
+    margin-top: 2vh; /* 화면 높이에 비례한 여백 */
+    padding: 1vh 2vh; /* 화면 크기에 비례한 내부 여백 */
+    background-color: #ffdf00; /* 버튼 배경색 */
+    color: #000; /* 버튼 텍스트 색상 */
+    border: 1px solid #000; /* 화면 크기에 비례한 테두리 */
+    border-radius: 1vh; /* 화면 크기에 비례한 둥근 모서리 */
+    cursor: pointer;
+    font-size: 1vw; /* 화면 너비에 비례한 텍스트 크기 */
+    line-height: 1.8; /* 줄 간격 조정 */
+    font-family: 'galmuri11', sans-serif; /* 버튼 폰트 */
+}
+
+.introtext button:hover {
+    background-color: #333; /* 호버 시 배경색 */
+    color: #fff; /* 호버 시 텍스트 색상 */
+}
+      .finishtext {
+    position: fixed;
+    bottom: 50%; /* 화면 하단 10% */
+    left: 50%; /* 가로 중앙 */
+    transform: translateX(-50%); /* 정확히 중앙 정렬 */
+    background-color: #ffdf00;
+    color: #000;
+    padding: 2vw 3vw;
+    border-radius: 2vh;
+    font-size: 5vw;
+    text-align: left;
+    display: none; /* 처음에는 숨김 */
+}
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="introtext" id="textBox">
+        이제 시디과의 악명 높은 과제를 헤쳐나가야 합니다! 다가오는 장애물들을 점프로 피하면서 홍익이가 순탄하게 과제를 할 수 있도록 도와주세요. 10개를 피하면 성공합니다!
+        <br>* 스페이스 바로 점프하세요 *
+        <button onclick="closeBox()">Let's Go!</button>
+    </div>
+    <div class="finishtext" id="finishText">
+      Finish!
+    </div>
+    </main>
+    <canvas id="canvas"></canvas>
+    <script>
+      let player;
+      let obstaclemix = [];
+      let timer = 0;
+      let jumpCount = 0;
+      const maxJumps = 2;
+      const gravity = 0.4;
+      let velocity = 0;
+      const jumpPower = -10;
+      let score = 0;
+      let img1, img2, bgImgDay, bgImgNight;
+      let aspectRatio;
+      let obstacleImages = [];
+      let bgbuildings = []; // 배경 건물 이미지 배열
+      let buildingObjects = []; // 배경 건물 객체들
+      let imageIndex = 0;
+      let lastChangeTime = 0;
+      let currentBg = 'day';
+
+      function preload() {
+        img1 = loadImage('running1.png', () => {
+          aspectRatio = img1.height / img1.width;
+        });
+        img2 = loadImage('running3.png', () => {
+          aspectRatio = img2.height / img1.width;
+        });
+        bgImgDay = loadImage('jumpbg.png');
+        bgImgNight = loadImage('jumpbg_night.png');
+
+        obstacleImages.push(loadImage('ob_ai.png'));
+        obstacleImages.push(loadImage('ob_figma.png'));
+        obstacleImages.push(loadImage('ob_mac.png'));
+        obstacleImages.push(loadImage('ob_maya.png'));
+        obstacleImages.push(loadImage('ob_notion.png'));
+        obstacleImages.push(loadImage('ob_ps.png'));
+        obstacleImages.push(loadImage('ob_test.png'));
+        obstacleImages.push(loadImage('ob_window.png'));
+
+        bgbuildings.push(loadImage('jumpbg_build1.png'));
+      }
+
+      function setup() {
+        createCanvas(windowWidth, windowHeight);
+
+        setTimeout(() => {
+                const textBox = document.getElementById('textBox');
+                textBox.style.display = 'block'; // 텍스트 박스 보이기
+            }, 2000); // 페이드인 완료 시간 (3000ms)
+
+        player = {
+          x: width * 0.1,
+          y: height * 0.7,
+          width: 150,
+          height: 150 * aspectRatio,
+          animationFrame: 0,
+          draw() {
+            let imgToShow = this.animationFrame % 20 < 10 ? img1 : img2;
+            image(imgToShow, this.x, this.y, this.width, this.height);
+          }
+        };
+
+        // 배경 건물 생성
+        for (let i = 0; i < 2; i++) {
+          let building = new BackgroundBuilding();
+          buildingObjects.push(building);
+        }
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+        player.x = width * 0.1;
+        player.y = height * 0.7;
+      }
+
+      function closeBox() {
+            const textBox = document.getElementById('textBox');
+            textBox.style.display = 'none'; // 텍스트 박스 숨기기
+        }
+
+      function draw() {
+        let currentTime = millis();
+        if (currentTime - lastChangeTime > 7000) {
+          lastChangeTime = currentTime;
+          currentBg = (currentBg === 'day') ? 'night' : 'day';
+        }
+
+        // 배경 이미지 변경
+        if (currentBg === 'day') {
+          image(bgImgDay, 0, 0, width, height);
+        } else {
+          image(bgImgNight, 0, 0, width, height);
+        }
+
+        // 배경 건물 처리
+        for (let i = 0; i < buildingObjects.length; i++) {
+          let building = buildingObjects[i];
+          building.update();
+          building.draw();
+        }
+
+        // 장애물 생성 및 처리
+        timer++;
+        if (timer % 150 === 0) {
+          let obstacle = new Obstacle();
+          obstaclemix.push(obstacle);
+        }
+
+        for (let i = obstaclemix.length - 1; i >= 0; i--) {
+          let obstacle = obstaclemix[i];
+          obstacle.update();
+          obstacle.draw();
+
+          if (!obstacle.passed && player.x > obstacle.x + obstacle.width) {
+            score++;
+            obstacle.passed = true;
+          }
+
+          if (obstacle.x < -obstacle.width) {
+            obstaclemix.splice(i, 1);
+          }
+
+          if (collision(player, obstacle)) {
+            noLoop();
+          }
+        }
+
+        if (score >= 10) {
+  noLoop();
+  const finishText = document.getElementById('finishText');
+  finishText.style.display = 'block'; // "You Win!" 메시지 보이기
+
+  // 3초 후에 텍스트 박스를 숨기고 다른 페이지로 이동
+  setTimeout(() => {
+    finishText.style.display = 'none'; // finish 텍스트 숨기기
+    window.location.href = '5b_board_afterJ.html'; // 'nextPage.html'로 이동 (원하는 페이지로 수정)
+  }, 3000); // 3초 후 실행
+
+    
+  }
+
+  
+        // 점프 및 중력 적용
+        velocity += gravity;
+        player.y += velocity;
+
+        if (player.y >= height * 0.7) {
+          player.y = height * 0.7;
+          velocity = 0;
+          jumpCount = 0;
+        }
+
+        player.draw();
+        player.animationFrame++;
+
+        fill(0);
+        textSize(32);
+        textFont('galmuri11');
+        text(`Score: ${score}`, 20, 40);
+      }
+
+      function keyPressed() {
+        if (key === ' ' && jumpCount < maxJumps) {
+          velocity = jumpPower;
+          jumpCount++;
+        }
+      }
+
+      class BackgroundBuilding {
+        constructor() {
+          this.x = width;
+          this.y = height * 0.5; // 위치를 더 위쪽으로 이동
+          this.img = random(bgbuildings); // 두 건물 이미지 중 랜덤 선택
+
+          // 이미지 비율 유지하며 크기 조정
+          this.width = this.img.width * 0.2; // 크기를 더 작게 설정
+          this.height = this.width * (this.img.height / this.img.width); // 비율에 맞춰 높이 설정
+          
+        }
+
+        update() {
+          this.x -= 7; // 속도 더 빠르게 설정 (이동 속도)
+
+          // 화면을 벗어나면 오른쪽 끝에 다시 배치
+          if (this.x + this.width < 0) {
+            this.x = width; // x 좌표를 화면의 오른쪽 끝으로 리셋
+            this.img = random(bgbuildings); // 새로운 이미지로 교체
+            this.width = this.img.width * 0.2; // 새로운 크기 설정 (작게)
+            this.height = this.width * (this.img.height / this.img.width); // 비율 유지
+          }
+        }
+
+        draw() {
+          image(this.img, this.x, this.y, this.width, this.height);
+        }
+      }
+
+      class Obstacle {
+        constructor() {
+          this.x = width;
+          this.y = height * 0.8;
+          this.width = 90;
+          this.height = 90;
+          this.passed = false;
+          this.img = obstacleImages[imageIndex];
+          imageIndex = (imageIndex + 1) % obstacleImages.length;
+        }
+
+        update() {
+          this.x -= 8;
+        }
+
+        draw() {
+          image(this.img, this.x, this.y, this.width, this.height);
+        }
+      }
+
+      function collision(player, obstacle) {
+  if (
+    player.x + player.width > obstacle.x &&
+    player.x < obstacle.x + obstacle.width &&
+    player.y + player.height > obstacle.y &&
+    player.y < obstacle.y + obstacle.height
+  ) {
+    noLoop();  // 게임 멈추기
+    setTimeout(() => {
+      location.reload();  // 1초 후에 페이지 새로 고침
+    }, 1000);
+    return true;
+  }
+  return false;
+}
+    </script>
+  </body>
+</html>

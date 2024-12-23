@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.0/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.0/addons/p5.sound.min.js"></script>
+    <meta charset="utf-8" />
+    <style>
+        @import url('https://fastly.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css');
+
+        body {
+            font-family: 'galmuri11', sans-serif;
+        }
+
+        .npc-text {
+            position: absolute;
+            color: rgb(0, 0, 0);
+            font-size: 20px;
+            font-family: 'galmuri11', sans-serif;
+            display: none;
+            line-height: 1.5;
+        }
+
+        .hover-text {
+            position: absolute;
+            color: rgb(2, 52, 188);
+            font-size: 20px;
+            font-family: 'galmuri11', sans-serif;
+            display: none;
+            cursor: pointer;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out; /* 부드러운 깜빡임 효과 */
+            text-align:right
+        }
+
+        .hover-text:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <main>
+    </main>
+    <script>
+        let backgroundImg;
+        let buildImg1, buildImg2, YMImg3;
+        let npcImg, tiredImg, happyImg, sadImg, angryImg, noImg;
+        let fadeInAmount = 255;
+
+        let npcVisible = false;
+        let tiredVisible = false;
+        let currentTextIndex = 0;
+
+        let npcText, hoverText;
+        let displayedText = ""; // 현재 보여지는 타이핑된 텍스트
+        let typingIndex = 0;    // 타이핑 효과를 위한 인덱스
+        let typingSpeed = 50;   // 타이핑 속도(ms)
+        let isTyping = false;   // 현재 타이핑 중인지 여부
+
+        const dialogues = [
+            "휴.. 오늘 하루도 벌써 끝이 났네. 정말 피곤한 하루였어.",
+            "또 집에 갈 때 1시간 반이나 지하철을 타야하다니 정말 막막하다.<br>내일은 좀 더 힘낼 수 있을까? 매일 이렇게 피곤하니 걱정이야.",
+            "아 맞아 그랬지! 오늘 운좋게 앞 사람이 나가고 너희가 도와준 덕에 재빨리 앉을 수 있었지.<br>그래도 그거 하나로 기분 좋게 하루를 시작했었어.",
+            "오늘은 전공 수업을 여러 개 들어서 더 힘들었던 것 같아.<br>내가 손이 느린 탓에 수강신청을 잘 못했으니 어쩔 수 없는 일이지 뭐...",
+            "오늘은 재료비도 정말 많이 썼네.<br>아니, 어도비는 정말 왜 이렇게 비싼 거야??? 결제일마다 깜짝 깜짝 놀란다니까.",
+            "그래 맞아. 오늘 고난이 있었지만, 비싸게 산 맥북과 어도비 프로그램으로 과제를 무사히 끝낼 수 있었어.<br>여러 에러들과 장애물을 다행히 피할 수 있었지!",
+            "내일도 또 아침부터 일찍 학교를 와야해. 통학이 정말 피곤하고 힘들기는 하지만..",
+            "일상 속의 소소한 행복을 느낄 수 있게 해주고, 때로는 혼자서 가만히 생각할 수 있는 시간이 되기도 해.<br>오늘은 이만 귀가하고, 또 내일 하루를 열심히 살아봐야지!"
+        ];
+        const hoverTexts = [
+            "▼",
+            "▶︎ 그래도 오늘 아침에 완전 럭키하게 앉아서 왔는걸!",
+            "▼",
+            "▼",
+            "▶︎ 그래도, 오늘 그 많은 과제들을 다 끝냈잖아! 정말 대단해!",
+            "▼",
+            "▶︎ ...하지만?",
+            "▶︎ 모든 통학러들, 화이팅!"
+        ];
+
+        function preload() {
+            backgroundImg = loadImage('jumpbg_night.png');
+            buildImg1 = loadImage('jumpbg_n_build1.png');
+            buildImg2 = loadImage('jumpbg_n_build2.png');
+            YMImg3 = loadImage('YM.png');
+            npcImg = loadImage('home_text.png');
+            tiredImg = loadImage('home_tired.png');
+            happyImg = loadImage('home_laugh.png');
+            sadImg = loadImage('home_sad.png');
+            angryImg = loadImage('home_angry.png');
+            noImg = loadImage('home_no.png');
+        }
+
+        function setup() {
+            const screenRatio = Math.min(windowWidth / 5120, windowHeight / 2880);
+            createCanvas(5120 * screenRatio, 2880 * screenRatio);
+
+            npcText = createP(""); // 비어 있는 텍스트로 시작
+            npcText.class('npc-text');
+
+            hoverText = createP(hoverTexts[currentTextIndex]);
+            hoverText.class('hover-text');
+            hoverText.mousePressed(() => {
+                if (!isTyping) {
+                // 마지막 대화가 아니면 currentTextIndex를 증가시킨다.
+                if (currentTextIndex < dialogues.length - 1) {
+                    currentTextIndex++;
+                } else {
+                    window.location.href = 'index.html';
+                    return; // 마지막 대화에 도달하면 더 이상 진행하지 않음
+                }
+                    startTyping(dialogues[currentTextIndex]);
+                    hoverText.html(hoverTexts[currentTextIndex]);
+
+                    // 세 번째 대화로 넘어갈 때 tiredImg를 변경
+                    if (currentTextIndex === 2) {
+                        tiredImg = happyImg; // 새로운 이미지로 변경
+                    } 
+                    if (currentTextIndex === 3) {
+                        tiredImg = sadImg; // 새로운 이미지로 변경
+                    }
+                    if (currentTextIndex === 4) {
+                        tiredImg = angryImg; // 새로운 이미지로 변경
+                    }
+                    if (currentTextIndex === 5) {
+                        tiredImg = happyImg; // 새로운 이미지로 변경
+                    }
+                    if (currentTextIndex === 6) {
+                        tiredImg = noImg; // 새로운 이미지로 변경
+                    }
+                    if (currentTextIndex === 7) {
+                        tiredImg = happyImg; // 새로운 이미지로 변경
+                    }
+                    if (currentTextIndex === 8) {
+                        tiredImg = happyImg; // 새로운 이미지로 변경
+                    }
+                }
+            });
+
+            setTimeout(function() {
+                npcVisible = true;
+                tiredVisible = true;
+                npcText.style('display', 'block');
+                hoverText.style('display', 'block');
+                startTyping(dialogues[currentTextIndex]); // 초기 대화 타이핑 효과 시작
+                toggleHoverBlink(); // 호버 텍스트 깜빡임 효과 시작
+            }, 3000);
+        }
+
+        function draw() {
+            const scaleFactor = Math.min(windowWidth / 5120, windowHeight / 2880);  // 화면 크기에 맞게 이미지 크기 조정
+            const smallerScaleFactor = scaleFactor * 0.3; // 크기를 50% 줄임
+
+            background(backgroundImg);
+            image(buildImg1, 1160 * scaleFactor, 1520 * scaleFactor, 500 * scaleFactor, 700 * scaleFactor);
+            image(buildImg1, 300 * scaleFactor, 900 * scaleFactor, 1000 * scaleFactor, 1400 * scaleFactor);
+            image(buildImg2, 3100 * scaleFactor, 950 * scaleFactor, 1843 * scaleFactor, 1628 * scaleFactor);
+            image(YMImg3, 1500 * scaleFactor, 1280 * scaleFactor, 1200 * scaleFactor, 1022 * scaleFactor);
+
+            // npcImg와 tiredImg를 smallerScaleFactor로 크기를 줄임
+            if (npcVisible) {
+                const npcX = windowWidth / 2 - npcImg.width * smallerScaleFactor / 2;  // 중앙 X 위치
+                const npcY = windowHeight / 2 + 600 * smallerScaleFactor; // 중앙보다 아래 Y 위치
+                image(npcImg, npcX, npcY, npcImg.width * smallerScaleFactor, npcImg.height * smallerScaleFactor);
+
+                // npcText와 hoverText를 npcImg 위에 배치 (겹치도록)
+                npcText.position(npcX + 50, npcY + 30); // npcImg 위에 텍스트 위치
+                hoverText.position(npcX + 50, npcY + 150); // npcImg 오른쪽에 텍스트 위치
+            
+
+            if (tiredVisible) {
+                image(tiredImg, npcX, npcY - tiredImg.height * smallerScaleFactor - 10, tiredImg.width * smallerScaleFactor, tiredImg.height * smallerScaleFactor);
+            }
+        }
+
+            if (fadeInAmount > 0) {
+                fadeInAmount -= 2;
+                fill(0, fadeInAmount);
+                rect(0, 0, width, height);
+            }
+        }
+
+        // 타이핑 효과 함수
+        function startTyping(text) {
+            displayedText = "";
+            typingIndex = 0;
+            isTyping = true;
+            const typingInterval = setInterval(() => {
+                if (typingIndex < text.length) {
+                    displayedText += text[typingIndex];
+                    npcText.html(displayedText); // 현재 텍스트 업데이트
+                    typingIndex++;
+                } else {
+                    clearInterval(typingInterval);
+                    isTyping = false; // 타이핑 완료
+                }
+            }, typingSpeed);
+        }
+
+        // 호버 텍스트 깜빡이는 효과 함수
+        function toggleHoverBlink() {
+            let isFading = true;
+            setInterval(() => {
+                hoverText.style('opacity', isFading ? '0.3' : '1');
+                isFading = !isFading;
+            }, 500); // 0.5초 간격으로 깜빡임
+        }
+    </script>
+</body>
+</html>

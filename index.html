@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.0/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.0/addons/p5.sound.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta charset="utf-8" />
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        
+        <div class="background"></div> <!-- 배경 이미지 -->
+        <div id="canvasContainer"></div> <!-- p5.js 캔버스를 위한 컨테이너 -->
+    </main>
+
+    <script>
+        let bgImg, logoImg, clickImg, playerImg; // 이미지 변수
+        let imgWidth = 200; // 클릭할 이미지 너비
+        let imgHeight; // 클릭할 이미지 높이 (원본 비율로 계산)
+        let imgX, imgY; // 클릭할 이미지 위치
+        let fadeOut = false; // 페이드아웃 시작 여부
+        let opacity = 0; // 화면의 어두운 투명도 값
+        let blinkAlpha = 255; // 깜빡임 투명도
+        let playerX, playerY; // 플레이어 위치
+        let playerSpeed = 4; // 플레이어 이동 속도
+        let playerWidth = 180; // 플레이어 이미지 너비
+        let playerHeight; // 플레이어 이미지 높이 (비율 기반)
+
+        let fadeInAmount = 255; // 페이드인 효과를 위한 변수
+        let isInteractionEnabled = false; // 상호작용 활성화 여부
+
+        function preload() {
+            bgImg = loadImage('start_skybg.png'); // 배경 이미지 로드
+            clickImg = loadImage('letsstart.png', img => {
+                // 클릭 이미지 비율로 높이 계산
+                let aspectRatio = img.height / img.width;
+                imgHeight = imgWidth * aspectRatio;
+            });
+            logoImg = loadImage('logo_ver2.png');
+            playerImg = loadImage('running1.png', img => {
+                // 플레이어 이미지 비율로 높이 계산
+                let aspectRatio = img.height / img.width;
+                playerHeight = playerWidth * aspectRatio;
+            });
+
+            backgroundAudio = new Audio('bgm.mp3');
+            backgroundAudio.loop = true; // 반복 재생 설정
+        }
+
+        function playAudio() {
+            // 버튼 클릭 시 오디오 재생
+            backgroundAudio.play();
+            document.getElementById('playButton').style.display = 'none'; // 버튼 숨기기
+        }
+
+        // 페이지 로드 시 자동 재생
+        window.onload = function() {
+            backgroundAudio.play(); // 페이지 로드 시 오디오 재생
+        }
+        
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight); // 창 크기에 맞춘 캔버스 생성
+            imgX = (width - imgWidth) / 2; // 클릭 이미지 X 위치 (중앙)
+            imgY = (height - imgHeight) / 2 + 45; // 클릭 이미지 Y 위치 (중앙)
+            playerX = -100; // 플레이어 시작 X 좌표
+            playerY = height - 340; // 플레이어 시작 Y 좌표
+        }
+
+        function draw() {
+            clear();
+
+            // 배경 이미지 그리기
+            image(bgImg, 0, 0, width, height);
+
+            // 로고 이미지 그리기
+            let logoWidth = width * 0.4;
+            let logoHeight = logoWidth * (logoImg.height / logoImg.width);
+            let logoX = (width - logoWidth) / 2;
+            let logoY = height / 4.8 + sin(frameCount * 0.07) * 5;
+            image(logoImg, logoX, logoY, logoWidth, logoHeight);
+
+            // 클릭 이미지 깜빡임 효과
+            blinkAlpha = 128 + 127 * sin(frameCount * 0.09);
+            tint(255, blinkAlpha);
+            image(clickImg, imgX, imgY, imgWidth, imgHeight);
+            noTint();
+
+            // 플레이어 이미지 그리기 (원본 비율 유지)
+            image(playerImg, playerX, playerY, playerWidth, playerHeight);
+
+            // 플레이어 이동
+            playerX += playerSpeed;
+            if (playerX > width) {
+                playerX = -100; // 화면 밖으로 나가면 다시 시작
+            }
+
+            // 페이드인 효과
+            if (fadeInAmount > 0) {
+                fadeInAmount -= 2;
+                fill(0, fadeInAmount);
+                rect(0, 0, width, height); // 어두운 화면을 서서히 사라지게 함
+            } else {
+                isInteractionEnabled = true; // 페이드인 완료 후 상호작용 활성화
+            }
+
+            // 클릭 이미지 위에 마우스가 있을 때 커서 변경
+            if (
+                isInteractionEnabled && // 페이드인 완료 후에만 클릭 활성화
+                mouseX > imgX &&
+                mouseX < imgX + imgWidth &&
+                mouseY > imgY &&
+                mouseY < imgY + imgHeight
+            ) {
+                cursor('pointer');
+            } else {
+                cursor('default');
+            }
+
+            // 페이드아웃 애니메이션
+            if (fadeOut) {
+                opacity += 5; // 점점 불투명해짐
+                fill(0, opacity); // 검은색 사각형으로 덮음
+                rect(0, 0, width, height);
+
+                // 화면이 완전히 어두워지면 페이지 전환
+                if (opacity >= 255) {
+                    window.location.href = '2_board.html'; // 이동할 페이지 URL
+                }
+            }
+        }
+
+        function mousePressed() {
+            // 클릭한 위치가 클릭 이미지 안인지 확인
+            if (
+                isInteractionEnabled && // 페이드인 후에만 클릭 처리
+                mouseX > imgX &&
+                mouseX < imgX + imgWidth &&
+                mouseY > imgY &&
+                mouseY < imgY + imgHeight
+            ) {
+                fadeOut = true; // 페이드아웃 시작
+            }
+        }
+    </script>
+</body>
+</html>

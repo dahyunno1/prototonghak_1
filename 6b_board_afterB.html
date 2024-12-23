@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.0/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.0/addons/p5.sound.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <meta charset="utf-8" />
+    <style>
+        /* @import 구문을 style 태그의 가장 위에 배치 */
+        @import url('https://fastly.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css');
+
+        body {
+            font-family: 'galmuri11', sans-serif; /* 기본 폰트 설정 */
+            overflow: hidden;
+        }
+
+        .first-text {
+            position: fixed;
+            bottom: 10%; /* 화면 하단 10% */
+            left: 50%; /* 가로 중앙 */
+            transform: translateX(-50%); /* 정확히 중앙 정렬 */
+            background-color: #ffdf00;
+            color: #000;
+            padding: 1vw 3vw;
+            border-radius: 1vh;
+            font-size: 1.5vw;
+            text-align: left;
+            display: none; /* 처음에는 숨김 */
+        }
+        
+    </style>
+</head>
+<body>
+    <main>
+    </main>
+
+    <div class="first-text" id="firsttextBox">
+        과제도 다 했고, 필요한 것들도 다 샀으니 이제 집에 갈 수 있어! 얼른 집으로 가자!
+    </div>
+ 
+    
+    
+    <script>
+        var x = 170;
+        var y = 350;
+
+        let playerImg;
+        let backgroundImg;
+         // 타겟들을 배열로 관리
+        let playerWidth;
+        let playerHeight;
+
+        let isColliding = false; // 충돌 발생 여부 플래그
+        let fadeAmount = 0; // 페이드 아웃 효과를 위한 변수
+        let fadeInAmount = 255; // 초기 페이드인 효과를 위한 변수 (처음에 완전히 어두운 상태)
+
+        function preload() {
+            playerImg = loadImage('player_front.png', img => {
+                let aspectRatio = img.height / img.width;
+                playerWidth = windowWidth * 0.06;
+                playerHeight = playerWidth * aspectRatio;
+            });
+            backgroundImg = loadImage('board.png'); // 배경 이미지 파일
+        }
+
+        let targets = [];
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+
+
+            // 타겟 위치 및 크기 배열 설정
+            targets = [
+        { img: loadImage('board_1.png'), x: 1, y: 400, wRatio: 0.27, hRatio: 0.27, page: '3_subway.html' },
+        { img: loadImage('board_2.png'), x: 300, y: 280, wRatio: 0.27, hRatio: 0.27, page: '4_class.html' },
+        { img: loadImage('board_3.png'), x: 630, y: 330, wRatio: 0.27, hRatio: 0.27, page: '5_jumpgame.html' },
+        { img: loadImage('board_4.png'), x: 960, y: 380, wRatio: 0.27, hRatio: 0.27, page: '6_buying.html' },
+        { img: loadImage('board_5.png'), x: 1300, y: 330, wRatio: 0.27, hRatio: 0.27, page: '7_home.html' },
+    ];
+
+            setTimeout(() => {
+                const firsttextBox = document.getElementById('firsttextBox');
+                firsttextBox.style.display = 'block'; // 텍스트 박스 보이기
+            }, 2000); // 페이드인 완료 시간 (3000ms)
+        }
+
+        
+
+        function draw() {
+    // 배경 이미지 렌더링
+    background(backgroundImg, width, height);
+
+    // 타겟 이미지 그리기 및 충돌 감지 범위 계산
+    for (let i = 0; i < targets.length; i++) {
+        let target = targets[i];
+
+        // 반응형 위치 계산
+        const imgX = target.x;
+        const imgY = target.y;
+
+        // 반응형 크기 계산
+        const maxWidth = target.wRatio * windowWidth; // 반응형 기준 최대 너비
+        const maxHeight = target.hRatio * windowHeight; // 반응형 기준 최대 높이
+
+        // 원본 비율 유지하며 크기 조정
+        const aspectRatio = target.img.width / target.img.height;
+        let imgWidth = maxWidth;
+        let imgHeight = imgWidth / aspectRatio;
+
+        // 높이가 제한을 초과하면 높이를 기준으로 다시 조정
+        if (imgHeight > maxHeight) {
+            imgHeight = maxHeight;
+            imgWidth = imgHeight * aspectRatio;
+        }
+
+        // 타겟 중심에 이미지 배치
+        const centerX = imgX + (maxWidth - imgWidth) / 2;
+        const centerY = imgY + (maxHeight - imgHeight) / 2;
+
+        // 타겟 이미지 그리기
+        image(target.img, centerX, centerY, imgWidth, imgHeight);
+
+        // 충돌 감지: board_1.png는 무시
+    if (target.page !== '3_subway.html' && // board_1.png에 대한 조건 추가
+        target.page !== '4_class.html' &&
+        target.page !== '5_jumpgame.html' &&
+        target.page !== '6_buying.html' &&
+        checkCollision(x, y, centerX, centerY, playerWidth, playerHeight, imgWidth, imgHeight)) {
+        
+        console.log("Collision detected with " + target.page);
+        isColliding = true;
+
+        // 충돌 시 페이드 아웃 효과 시작
+        if (fadeAmount < 255) {
+            fadeAmount += 4; // 천천히 페이드 아웃
+        }
+
+        // 페이드 아웃이 완료되면 페이지 이동
+        if (fadeAmount >= 255) {
+            window.location.href = target.page;
+        }
+        break;
+    }
+}
+
+
+    // 플레이어 이미지 그리기
+    image(playerImg, x, y, playerWidth, playerHeight);
+
+    // 페이드인 효과 (처음 화면 어두운 상태에서 밝아지는 효과)
+    if (fadeInAmount > 0) {
+        fadeInAmount -= 5; // 페이드인 속도 조정
+        fill(0, fadeInAmount);
+        rect(0, 0, width, height);
+    }
+
+    // 충돌 발생 시 페이드아웃 효과
+    if (isColliding) {
+        fadeScreen();
+        return;
+    }
+}
+
+
+        
+
+        // 페이드 아웃 화면
+        function fadeScreen() {
+            fill(0, fadeAmount);
+            rect(0, 0, width, height);
+        }
+
+        function keyPressed() {
+            // 충돌이 발생하지 않은 경우에만 플레이어 이동
+            if (!isColliding) {
+                if (keyCode === UP_ARROW) {
+                    y = y - 30;
+                } else if (keyCode === DOWN_ARROW) {
+                    y = y + 30;
+                }
+                if (keyCode === LEFT_ARROW) {
+                    x = x - 30;
+                } else if (keyCode === RIGHT_ARROW) {
+                    x = x + 30;
+                }
+            }
+        }
+
+        // 충돌 감지 함수
+        function checkCollision(x1, y1, x2, y2, width1, height1, width2, height2) {
+            return (
+                x1 < x2 + width2 &&       // 오른쪽 경계선
+                x1 + width1 > x2 &&       // 왼쪽 경계선
+                y1 < y2 + height2 &&      // 아래쪽 경계선
+                y1 + height1 > y2        // 위쪽 경계선
+            );
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.0/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.0/addons/p5.sound.min.js"></script>
+
+    <meta charset="utf-8" />
+    <style>
+        @import url('https://fastly.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css');
+
+        body {
+            font-family: 'galmuri11', sans-serif;
+        }
+
+        .introtext {
+            position: fixed; /* 화면에 고정 */
+            top: 50%; /* 화면의 세로 중앙 */
+            left: 50%; /* 화면의 가로 중앙 */
+            transform: translate(-50%, -50%); /* 정확히 중앙 정렬 */
+            background-color: #c9e8ff; /* 노란색 배경 */
+            border: 1px solid #000;
+            color: #000; /* 검은색 텍스트 */
+            font-family: 'galmuri11', sans-serif; /* 텍스트 박스 폰트 */
+            padding: 3vw 2vw; /* 화면 크기에 비례한 내부 여백 */
+            border-radius: 1vw; /* 화면 크기에 비례한 둥근 모서리 */
+            font-size: 1.5vw; /* 화면 너비에 비례한 텍스트 크기 */
+            line-height: 1.8; /* 줄 간격 조정 */
+            text-align: center; /* 텍스트 중앙 정렬 */
+            z-index: 1000; /* 콘텐츠 위로 뜨게 */
+            display: none; /* 처음에는 숨김 */
+            max-width: 60; /* 너무 커지지 않도록 최대 너비 제한 */
+            max-height: 40%; /* 최대 높이 제한 */
+        }
+
+        .introtext button {
+            margin-top: 2vh; /* 화면 높이에 비례한 여백 */
+            padding: 1vh 2vh; /* 화면 크기에 비례한 내부 여백 */
+            background-color: #ffdf00; /* 버튼 배경색 */
+            color: #000; /* 버튼 텍스트 색상 */
+            border: 1px solid #000; /* 화면 크기에 비례한 테두리 */
+            border-radius: 1vh; /* 화면 크기에 비례한 둥근 모서리 */
+            cursor: pointer;
+            font-size: 1vw; /* 화면 너비에 비례한 텍스트 크기 */
+            line-height: 1.8; /* 줄 간격 조정 */
+            font-family: 'galmuri11', sans-serif; /* 버튼 폰트 */
+        }
+
+        .introtext button:hover {
+            background-color: #333; /* 호버 시 배경색 */
+            color: #fff; /* 호버 시 텍스트 색상 */
+        }
+
+        .gogotext {
+            color: #000;
+            font-size: 3vw;
+            font-family: 'galmuri11', sans-serif;
+            position: absolute;
+            top: 65%; /* 세로 중앙 */
+             left: 93%;
+             animation: blink 1.5s ease-in-out infinite; /* 애니메이션을 설정 */
+        }
+
+        @keyframes blink {
+    0% {
+        opacity: 1; /* 완전히 보임 */
+    }
+    50% {
+        opacity: 0; /* 완전히 사라짐 */
+    }
+    100% {
+        opacity: 1; /* 다시 보임 */
+    }
+}
+    </style>
+</head>
+<body>
+    <main></main>
+    <div class="introtext" id="textBox">
+        수업이 끝났으니 과제에 필요한 것들을 구매해야 합니다. 세 곳의 구매처를 지나가면서 결제해주세요! 지갑이 많이 가벼워질 거에요.
+        * 좌우 방향키로 이동 *
+        <button onclick="closeBox()">Let's Go!</button>
+    </div>
+
+    <p class="gogotext" id="righttext">>></p>
+
+    <script>
+        let playerImgs = [];
+        let currentFrame = 0;
+        let backgroundImg;
+        let appleImg, hangaramImg, adobeImg;
+        let popupImage = null;
+        let popupImageTimeout = 0;
+        let playerWidth;
+        let playerHeight;
+        let x = 50; // 초기 x 위치
+        let y = 600; // 초기 y 위치
+        let fadeInAmount = 255; //
+        let fadeOutAmount = 0; // 페이드 아웃을 위한 변수
+        let currentCollision = null;
+        let popupMessage = ""; // 팝업 메시지를 저장할 변수
+
+        let objects = [];
+
+        function preload() {
+            // 플레이어 이미지 로드
+            const imageFiles = ['running1.png', 'running2.png', 'running3.png'];
+            for (let file of imageFiles) {
+                playerImgs.push(loadImage(file, img => {
+                    // 화면 크기에 비례한 플레이어 이미지 크기 설정
+                    const scaleFactor = windowWidth / 5120; // 5120은 기준 화면 크기 (예: 5120x2880)
+                    playerWidth = 500 * scaleFactor; // 비례한 너비
+                    playerHeight = playerWidth * (img.height / img.width); // 비례한 높이 유지
+                }));
+            }
+
+            backgroundImg = loadImage('jumpbg.png');
+            appleImg = loadImage("buy_apple.png");
+            hangaramImg = loadImage("buy_hangaram.png");
+            adobeImg = loadImage("buy_adobe.png");
+            popupImg = loadImage("buy_popup.png");
+        }
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+
+            const screenWidthRatio = windowWidth / 5120;
+            const screenHeightRatio = windowHeight / 2880;
+
+            objects = [
+                { 
+                    x: 800 * screenWidthRatio, 
+                    y: 1220 * screenHeightRatio, 
+                    w: 1000 * screenWidthRatio, 
+                    h: 1000 * screenHeightRatio, 
+                    img: appleImg, 
+                    message: "Press ⇧ Key!" // 기존 메시지
+                },
+                { 
+                    x: 2060 * screenWidthRatio, 
+                    y: 1220 * screenHeightRatio, 
+                    w: 1000 * screenWidthRatio, 
+                    h: 1000 * screenHeightRatio, 
+                    img: hangaramImg, 
+                    message: "Press ⇧ Key!" // 기존 메시지
+                },
+                { 
+                    x: 3320 * screenWidthRatio, 
+                    y: 1220 * screenHeightRatio, 
+                    w: 1000 * screenWidthRatio, 
+                    h: 1000 * screenHeightRatio, 
+                    img: adobeImg, 
+                    message: "Press ⇧ Key!" // 기존 메시지
+                }
+            ];
+
+            setTimeout(() => {
+                const textBox = document.getElementById('textBox');
+                textBox.style.display = 'block'; // 텍스트 박스 보이기
+            }, 1000);
+        }
+
+        function closeBox() {
+            const textBox = document.getElementById('textBox');
+            textBox.style.display = 'none'; // 텍스트 박스 숨기기
+        }
+
+        function draw() {
+            // 배경 이미지 렌더링
+            background(backgroundImg);
+
+            // 오브젝트 이미지 렌더링
+            for (let obj of objects) {
+                image(obj.img, obj.x, obj.y, obj.w, obj.h);
+            }
+
+            // 플레이어 이미지 렌더링
+            if (currentFrame === 1) {
+                const running2Y = y;
+                image(playerImgs[currentFrame], x, running2Y, playerWidth, playerHeight);
+            } else {
+                const img = playerImgs[currentFrame];
+                image(img, x, y, playerWidth, playerHeight);
+            }
+
+            if (x + playerWidth >= width) {
+            window.location.href = "6b_board_afterB.html";  // 새로운 HTML 페이지로 이동
+    }
+
+            currentCollision = null; // 충돌 상태 초기화
+            for (let obj of objects) {
+                if (
+                    x < obj.x + obj.w &&
+                    x + playerWidth > obj.x &&
+                    y < obj.y + obj.h &&
+                    y + playerHeight > obj.y
+                ) {
+                    currentCollision = obj; // 충돌한 오브젝트 정보 저장
+                    fill(0); // 텍스트 색상
+                    textAlign(CENTER, CENTER);
+                    textFont('galmuri11')
+                    textSize(30);
+                    text(obj.message, obj.x + obj.w / 2, obj.y - 40); // 충돌한 오브젝트 메시지
+                    break; // 첫 번째 충돌에 대해서만 메시지를 설정
+                }
+            }
+
+            if (popupImage) {
+                imageMode(CENTER);
+
+                const aspectRatio = popupImg.width / popupImg.height;
+                const popupWidth = 900; // 표시할 너비
+                const popupHeight = popupWidth / aspectRatio;
+
+                image(popupImg, width / 2, height / 2, popupWidth, popupHeight);
+
+                fill(0);  // 흰색 텍스트
+                textSize(30);
+                textAlign(LEFT, CENTER);
+                text(popupMessage, width / 2 - 350, height / 2);  // 팝업 메시지 표시
+
+                imageMode(CORNER);
+
+                if (millis() > popupImageTimeout) {
+                    popupImage = null;
+                    popupMessage = ""; // 메시지 초기화
+                }
+            }
+
+            // 페이드인 효과
+            if (fadeInAmount > 0) {
+                fadeInAmount -= 5;
+                fill(0, fadeInAmount);
+                rect(0, 0, width, height);
+            }
+        }
+
+        function keyPressed() {
+            if (keyCode === LEFT_ARROW) {
+                x -= 60;
+                updateAnimationFrame(); // 애니메이션 업데이트
+            } else if (keyCode === RIGHT_ARROW) {
+                x += 60;
+                updateAnimationFrame(); // 애니메이션 업데이트
+            } else if (keyCode === UP_ARROW && currentCollision) {
+                // 팝업 메시지 변경
+                if (currentCollision.img === appleImg) {
+                    popupMessage = ">>‘맥북’ 결제완료\n  ₩2,500,000";
+                } else if (currentCollision.img === hangaramImg) {
+                    popupMessage = ">>‘캔트지’, ‘테이프’, ‘실크샤‘ 외 5건 결제 완료\n  ₩50,000";
+                } else if (currentCollision.img === adobeImg) {
+                    popupMessage = ">>’Creative Cloud’ 월정액 결제 완료\n  ₩78,100";
+                }
+
+                popupImage = popupImg;
+                popupImageTimeout = millis() + 2000;
+            }
+        }
+
+        function updateAnimationFrame() {
+            currentFrame = (currentFrame + 1) % playerImgs.length;
+        }
+    </script>
+</body>
+</html>
